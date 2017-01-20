@@ -19,6 +19,8 @@ package main
 import (
 	"errors"
 	"fmt"
+         "encoding/json"
+
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
@@ -26,6 +28,22 @@ import (
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
 }
+
+	
+
+type laptop struct{
+	Name string `json:"name"`	 					//attributes of laptop
+	RAM string  `json:"ram"`	 
+
+	ROM string   `json:"rom"`	
+	User string  `json:"user"`	 
+}
+
+
+
+
+
+
 
 func main() {
 	err := shim.Start(new(SimpleChaincode))
@@ -45,6 +63,11 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, err
 	}
 
+	
+	
+	
+		
+
 	return nil, nil
 }
 
@@ -57,11 +80,79 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return t.Init(stub, "init", args)
 	} else if function == "write" {
 		return t.write(stub, args)
-	}
+	}else if function == "init_laptop"{
+
+                return t.init_laptop(stub,args)
+       }         
+         
+       
+
+
+
 	fmt.Println("invoke did not find func: " + function)
 
 	return nil, errors.New("Received unknown function invocation: " + function)
 }
+
+
+func (t *SimpleChaincode) init_laptop(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+var err error    //to capture any errors
+
+//1x22 4GB 1TB thrinath
+//name RAM ROM User
+
+if len(args) != 4 {
+		return nil, errors.New("Incorrect number of arguments. Expecting 4")
+}
+
+fmt.Println("- start init laptop")
+
+Name := args[0]
+RAM := args[1]
+ROM := args[2]
+User := args[3]
+
+//check if laptop already exists
+laptopAsBytes, err := stub.GetState(Name)
+	if err != nil {
+		return nil, errors.New("Failed to get marble name")
+	}
+	res :=laptop{}
+	json.Unmarshal(laptopAsBytes, &res)
+	if res.Name == Name{
+
+
+		fmt.Println("This laptop` arleady exists: " +Name)
+		fmt.Println(res);
+		return nil, errors.New("This laptop arleady exists")				//all stop a marble by this name exists
+}
+
+str := `{"name": "` + Name + `", "ram": "` + RAM + `", "rom": ` + ROM + `, "user": "` + User + `"}`
+	err = stub.PutState(Name, []byte(str))							//store marble with id as key
+	if err != nil {
+		return nil, err
+}
+fmt.Println("- end init marble")
+return nil, nil
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Query is our entry point for queries
 func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
