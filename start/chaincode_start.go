@@ -133,7 +133,7 @@ func (t *SimpleChaincode) init_laptop(stub shim.ChaincodeStubInterface, args []s
 		return nil, errors.New("Failed to get marble name")
 	}
 	del := Laptop{}
-	json.Unmarshal(marbleAsBytes, &del)
+	json.Unmarshal(laptopAsBytes, &del)
 	if del.ID == id{
 		fmt.Println("This laptop arleady exists in the network: " + id)
 		fmt.Println(del);
