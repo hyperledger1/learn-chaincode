@@ -141,8 +141,14 @@ func (t *SimpleChaincode) init_laptop(stub shim.ChaincodeStubInterface, args []s
 	}
 	
 	//build the laptop  json string manually
-	str := `{"id": "` + id + `", "user": "` + user + `", "ram": ` + ram + `, "rom": "` + rom + `"}`
-	err = stub.PutState(id, []byte(str))									//store marble with id as key
+	//str := `{"id": "` + id + `", "user": "` + user + `", "ram": ` + ram + `, "rom": "` + rom + `"}`
+	
+	lappy := Laptop{}
+	lappy.ID = id
+	lappy.User = user
+	lappy.RAM = ram
+	lappy.ROM = rom
+	err = stub.PutState(id, []byte(lappy))									//store marble with id as key
 	if err != nil {
 		return nil, err
 	}
