@@ -35,8 +35,8 @@ type SimpleChaincode struct {
 type Laptop struct{
 	ID string `json:"id"`					//the fieldtags are needed to keep case from bouncing around
 	User string `json:"user"`
-        RAM  string `json:"ram"`
-        ROM string `json:"rom"`
+        Ram  string `json:"ram"`
+        Rom string `json:"rom"`
 }
 
 // ============================================================================================================================
@@ -139,17 +139,18 @@ func (t *SimpleChaincode) init_laptop(stub shim.ChaincodeStubInterface, args []s
 		fmt.Println(del);
 		return nil, errors.New("This laptop arleady exists")		
 	}
+	fmt.Println(del)
 	
 	//build the laptop  json string manually
-	//str := `{"id": "` + id + `", "user": "` + user + `", "ram": ` + ram + `, "rom": "` + rom + `"}`
+	str := `{"id": "` + id + `", "user": "` + user + `", "ram": ` + ram + `, "rom": "` + rom + `"}`
 	
-	lappy := Laptop{}
+	/*lappy := Laptop{}
 	lappy.ID = id
 	lappy.User = user
 	lappy.RAM = ram
 	lappy.ROM = rom
-	laptoptobytes, err := json.Marshal(lappy)
-	err = stub.PutState(id, laptoptobytes)									//store marble with id as key
+	laptoptobytes, err := json.Marshal(lappy)*/ 
+	err = stub.PutState(id, []byte(str))	//store marble with id as key
 	if err != nil {
 		return nil, err
 	}
