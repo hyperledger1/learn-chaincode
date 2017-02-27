@@ -15,9 +15,9 @@ type SimpleChaincode struct {
 
 var containerIndexStr = "_containerindex"    //This will be used as key and a value will be an array of Container IDs	
 
-var openOrdersStr = "_openorders"	  // This will be the key, value will be a list of orders(technically - array of order structs)
+var openOrdersStr = "_openorders"	  // This will be the key, value will be a list of all orders placed by market/Retailer - will be called by Supplier/Manufacturer
 
-
+var customerOrdersStr = "_customerorders"    // This will  be the key, value will be a list of orders placed by customer - wil be called by Customer
 
 type MilkContainer struct{
 
@@ -47,11 +47,8 @@ type Asset struct{
 	  User string        `json:"user"`
 	containerIDs []string `json:"containerids"`
 	LitresofMilk int `json:"litresofmilk"`
-	
 	Supplycoins int `json:"supplycoins"`
 }
-
-
 
 
 func main() {
@@ -67,7 +64,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	
 	var err error
 	
-	fmt.Println("Welcome to Supplychain management Phase 1, Deployment is on the go")
+	fmt.Println("Welcome to Supplychain management Phase 1, Deployment has been done, Initialising the things")
  
        if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 1")
@@ -119,9 +116,9 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return t.Init(stub, "init", args)
 	}else if function == "Create_milkcontainer" {		//creates a milk container-invoked by supplier   
 		return t.Create_milkcontainer(stub, args)
-	}else if function == "Create_coin" {		         //creates a coin - invoked by market /logistics - params - coin id, entity name
+	}else if function == "Create_coins" {		         //creates a coin - invoked by market /logistics - params - coin id, entity name
 		return t.Create_coin(stub, args)	
-        }else if function == "Buy_milk" {		         //creates a coin - invoked by market /logistics - params - coin id, entity name
+        }else if function == "BuyMilkfromRetailer" {		         //creates a coin - invoked by market /logistics - params - coin id, entity name
 		return t.Buy_milk(stub, args)	
         }
 	fmt.Println("invoke did not find func: " + function)
@@ -233,11 +230,35 @@ return nil,nil
 /*********************Buy milk - Customer interactio*******************/
 
 func (t *SimpleChaincode) BuyMilkfromRetailer(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-//args[0]
-//"10"
+//args[0]      args[1]
+//"cus123"       "10"
 // customer asks for a qty, check if market has that much quantity, if there-create a container for customer with qty he asked, and subtract the same from Market
-	fmt.Println("Hi , we are inside Buy_milk")
+	fmt.Println("Hello customer, welcome ")
 	quantity,_ := strconv.Atoi(args[0])
+	
+	Openorder := Order{}
+        Openorder.User = "customer"
+        Openorder.Status = "Order received by Market"
+        Openorder.OrderID = args[0]
+        Openorder.Litres, _ = strconv.Atoi(args[1])
+        orderAsBytes,_ := json.Marshal(Openorder)
+	
+	
+	customerordersAsBytes, err := stub.GetState(customerOrdersStr)         // note this is ordersAsBytes - plural, above one is orderAsBytes-Singular
+	if err != nil {
+		return nil, errors.New("Failed to get openorders")
+	}
+	var orders AllOrders
+	json.Unmarshal(customerordersAsBytes, &orders)				
+	
+	orders.OpenOrders = append(orders.OpenOrders , Openorder);		//append the new order - Openorder
+	fmt.Println("! appended %s to existing orders", Openorder.OrderID)
+	jsonAsBytes, _ := json.Marshal(orders)
+	err = stub.PutState(customerOrdersStr, jsonAsBytes)		  // Update the value of the key openOrdersStr
+	if err != nil {
+		return nil, err
+}
+	
 	marketassetAsBytes, err := stub.GetState("MarketAssets")
 	Marketasset := Asset{}             
 	json.Unmarshal(marketassetAsBytes, &Marketasset )
