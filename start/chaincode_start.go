@@ -238,11 +238,11 @@ func (t *SimpleChaincode) BuyMilkfromRetailer(stub shim.ChaincodeStubInterface, 
 	
 	Openorder := Order{}
         Openorder.User = "customer"
-        Openorder.Status = "Order received by Market"
+        Openorder.Status = "Order is being processed"
         Openorder.OrderID = args[0]
         Openorder.Litres, _ = strconv.Atoi(args[1])
         orderAsBytes,_ := json.Marshal(Openorder)
-	
+	stub.PutState(Openorder.OrderID,orderAsBytes)
 	
 	customerordersAsBytes, err := stub.GetState(customerOrdersStr)         // note this is ordersAsBytes - plural, above one is orderAsBytes-Singular
 	if err != nil {
@@ -259,34 +259,134 @@ func (t *SimpleChaincode) BuyMilkfromRetailer(stub shim.ChaincodeStubInterface, 
 		return nil, err
 }
 	
-	marketassetAsBytes, err := stub.GetState("MarketAssets")
-	Marketasset := Asset{}             
-	json.Unmarshal(marketassetAsBytes, &Marketasset )
+	
+	VieworderbyMarket(stub)
 	
 	
-	
-	
-	if (Marketasset.LitresofMilk >= quantity ){
-		fmt.Println("Will write a function by name shiptocustomer, no logistics here, directly delivered to customer")
-	}else{
-	        fmt.Println("There isn't sufficient quantity with me, Giving order to Supplier/Manufactirer")
-		a,b := Order_milk(stub,"20")
-		fmt.Println(a,b)
-	}
 	
 	return nil,nil
 }
 
+func  View_orderbyMarket(stub shim.ChaincodeStubInterface) ( error) {
+// This will be invoked by MARKET- think of UI-View orders- does he pass any parameter there...
+// so here also no need of any arguments.
+	
+	fmt.Printf("Inside View order , being viewed by Supplier")
+	
+	
+	ordersAsBytes, _ := stub.GetState(customerOrdersStr)
+	var orders AllOrders
+	json.Unmarshal(ordersAsBytes, &orders)	
+	quantity := orders.OpenOrders[0].Litres
+	
+	marketassetAsBytes, err := stub.GetState("MarketAssets")
+	Marketasset := Asset{}             
+	json.Unmarshal(marketassetAsBytes, &Marketasset )
+	
+	quantityasstring, _:= strconv.itoA(quantity)
+	var b string
+		b =  orders.OpenOrders[0].OrderID
+		
+	
+	
+	if (Marketasset.LitresofMilk >= quantity ){
+		fmt.Println("Will write a function by name shiptocustomer, no logistics here, directly delivered to customer")
+		
+		delivertocustomer(stub,b)
+	}else{
+	        fmt.Println("Right now there isn't sufficient quantity , Giving order to Supplier/Manufacturer")
+		orders.OpenOrders[0].Status ="In transit"
+		ordersAsBytes , _ = json.Marshal(orders)
+		stub.PutState(customerOrdersStr, ordersAsBytes)
+		
+		OrderID := orders.OpenOrders[0].OrderID
+		orderAsBytes, err := stub.GetState(OrderID)
+	if err != nil {
+		return  errors.New("Failed to get openorders")
+	}
+	        ShipOrder := Order{} 
+	        json.Unmarshal(orderAsBytes, &ShipOrder)
+	        ShipOrder.Status = "In transit"
+	        orderAsBytes,err = json.Marshal(ShipOrder)
+                stub.PutState(OrderID,orderAsBytes)
+
+		a,b := Order_milktoSupplier(stub,"20")
+		delivertocustomer(stub,b)
+	}
+	
+	
+	return nil
+
+}
+
+func delivertocustomer(stub shim.ChaincodeStubInterface ,args [2]string) (error){
+
+	//args[0] 
+	//OrderID  
+	OrderID := args[0]
+	orderAsBytes, err := stub.GetState(OrderID)
+	if err != nil {
+		return  errors.New("Failed to get openorders")
+	}
+	ShipOrder := Order{} 
+	json.Unmarshal(orderAsBytes, &ShipOrder)
+	
+	quantity , _ := strconv.Atoi(ShipOrder.Litres)
+	
+	
+	
+        customerassetAsBytes,_ := stub.GetState("CustomerAssets")        // The same key which we used in Init function 
+	customerasset := Asset{}
+	json.Unmarshal( assetAsBytes, &customerasset)
+	
+				 
+        marketassetAsBytes, err := stub.GetState("MarketAssets")
+	Marketasset := Asset{}             
+	json.Unmarshal(marketassetAsBytes, &Marketasset )
+	
+	customerasset.LitresofMilk += quantity
+	Marketasset.LitresofMilk -= quantity
+	
+	customerassetAsBytes,_ = json.Marshal(customerasset)
+	stub.PutState("CustomerAssets",customerassetAsBytes)
+	
+	marketassetAsBytes,_ = json.Marshal(Marketasset)
+	stub.PutState("MarketAssets",marketassetAsBytes)
+	
+	ShipOrder.Status ="Delivered to Customer"
+	fmt.Println("%v\n", ShipOrder)
+	orderAsBytes,err = json.Marshal(ShipOrder)
+        stub.PutState(OrderID,orderAsBytes)
+	
+	ordersAsBytes, _ := stub.GetState(customerOrdersStr)
+	var orders AllOrders
+	json.Unmarshal(ordersAsBytes, &orders)
+	
+	orders.OpenOrders[0].Status ="Delivered to customer"
+	ordersAsBytes , _ = json.Marshal(orders)
+	stub.PutState(customerOrdersStr, ordersAsBytes)
+	
+	
+	
+	transfer("30","Customer","Market")
+		
+	
+	fmt.Println("FINALLLLLYYYY, END OF THE STORY")
+         
+    return nil,nil
 
 
 
-func Order_milk(stub shim.ChaincodeStubInterface, args string) ([]byte, error) {
+}
+
+
+func Order_milktoSupplier(stub shim.ChaincodeStubInterface, args string) ([]byte, error) {
 //"20"
 //litres
 var err error
 Openorder := Order{}
 Openorder.User = "Market"
-Openorder.Status = "Order placed to Supplier"
+Openorder.Status = "Order placed to Supplier "
 Openorder.OrderID = "abcd"
 Openorder.Litres,err = strconv.Atoi(args)
 orderAsBytes,_ := json.Marshal(Openorder)
@@ -560,7 +660,7 @@ func transfer( stub shim.ChaincodeStubInterface, args [3]string) ( error) {
 	sender := args[1]                               // this thing should be given by us in UI background
 	receiver := args[2]                            // this will be given by the user on web page
 	
-	fmt.Println("Payment time, inside moneytransfer")
+	fmt.Println( sender, "transferring", transferamount, "coins to", receiver)
 	
         senderAssets := sender +"Assets"
         senderassetAsBytes,_ := stub.GetState(senderAssets)        // The same key which we used in Init function 
