@@ -101,7 +101,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	err = stub.PutState("SupplierAssets",jsonAsBytes)        // key -Supplier assets and value is empty now --> Supplier has no assets
 	err = stub.PutState("MarketAssets", jsonAsBytes)         // key -Market assets and value is empty now --> Market has no assets
 	err = stub.PutState("LogisticsAssets", jsonAsBytes)      // key - Logistics assets and value is empty now --> Logistic has no assets
-	
+	err = stub.PutState("CustomerAssets", jsonAsBytes) 
 	fmt.Println("Successfully deployed the code and orders and assets are reset")
 	
 	 return nil, nil
@@ -117,9 +117,9 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	}else if function == "Create_milkcontainer" {		//creates a milk container-invoked by supplier   
 		return t.Create_milkcontainer(stub, args)
 	}else if function == "Create_coins" {		         //creates a coin - invoked by market /logistics - params - coin id, entity name
-		return t.Create_coin(stub, args)	
+		return t.Create_coins(stub, args)	
         }else if function == "BuyMilkfromRetailer" {		         //creates a coin - invoked by market /logistics - params - coin id, entity name
-		return t.Buy_milk(stub, args)	
+		return t.BuyMilkfromRetailer(stub, args)	
         }
 	fmt.Println("invoke did not find func: " + function)
 
@@ -238,9 +238,11 @@ func (t *SimpleChaincode) BuyMilkfromRetailer(stub shim.ChaincodeStubInterface, 
 	
 	Openorder := Order{}
         Openorder.User = "customer"
-        Openorder.Status = "Order is being processed"
+        Openorder.Status = "Order received by Market"
         Openorder.OrderID = args[0]
         Openorder.Litres, _ = strconv.Atoi(args[1])
+	fmt.Println("Hello customer, your order has been generated successfully, you can track it with id in the following details")
+	fmt.Println("%v\n",Openorder)
         orderAsBytes,_ := json.Marshal(Openorder)
 	stub.PutState(Openorder.OrderID,orderAsBytes)
 	
@@ -260,7 +262,7 @@ func (t *SimpleChaincode) BuyMilkfromRetailer(stub shim.ChaincodeStubInterface, 
 }
 	
 	
-	VieworderbyMarket(stub)
+	View_orderbyMarket(stub)
 	
 	
 	
@@ -271,7 +273,7 @@ func  View_orderbyMarket(stub shim.ChaincodeStubInterface) ( error) {
 // This will be invoked by MARKET- think of UI-View orders- does he pass any parameter there...
 // so here also no need of any arguments.
 	
-	fmt.Printf("Inside View order , being viewed by Supplier")
+	fmt.Printf("Inside View order , being viewed by MArket")
 	
 	
 	ordersAsBytes, _ := stub.GetState(customerOrdersStr)
@@ -283,18 +285,19 @@ func  View_orderbyMarket(stub shim.ChaincodeStubInterface) ( error) {
 	Marketasset := Asset{}             
 	json.Unmarshal(marketassetAsBytes, &Marketasset )
 	
-	quantityasstring, _:= strconv.itoA(quantity)
+	
 	var b string
-		b =  orders.OpenOrders[0].OrderID
+	b =  orders.OpenOrders[0].OrderID
 		
 	
 	
 	if (Marketasset.LitresofMilk >= quantity ){
-		fmt.Println("Will write a function by name shiptocustomer, no logistics here, directly delivered to customer")
+		fmt.Println("Enough stock is available, delivering to customer in short time")
 		
 		delivertocustomer(stub,b)
 	}else{
 	        fmt.Println("Right now there isn't sufficient quantity , Giving order to Supplier/Manufacturer")
+		
 		orders.OpenOrders[0].Status ="In transit"
 		ordersAsBytes , _ = json.Marshal(orders)
 		stub.PutState(customerOrdersStr, ordersAsBytes)
@@ -309,8 +312,12 @@ func  View_orderbyMarket(stub shim.ChaincodeStubInterface) ( error) {
 	        ShipOrder.Status = "In transit"
 	        orderAsBytes,err = json.Marshal(ShipOrder)
                 stub.PutState(OrderID,orderAsBytes)
-
-		a,b := Order_milktoSupplier(stub,"20")
+//Giving order to Supplier/Manufacturer
+		a,c := Order_milktoSupplier(stub,"20")
+		fmt.Println(a)
+		fmt.Println(c)
+		
+		
 		delivertocustomer(stub,b)
 	}
 	
@@ -319,7 +326,7 @@ func  View_orderbyMarket(stub shim.ChaincodeStubInterface) ( error) {
 
 }
 
-func delivertocustomer(stub shim.ChaincodeStubInterface ,args [2]string) (error){
+func delivertocustomer(stub shim.ChaincodeStubInterface ,args string) (error){
 
 	//args[0] 
 	//OrderID  
@@ -331,7 +338,7 @@ func delivertocustomer(stub shim.ChaincodeStubInterface ,args [2]string) (error)
 	ShipOrder := Order{} 
 	json.Unmarshal(orderAsBytes, &ShipOrder)
 	
-	quantity , _ := strconv.Atoi(ShipOrder.Litres)
+	quantity := ShipOrder.Litres
 	
 	
 	
