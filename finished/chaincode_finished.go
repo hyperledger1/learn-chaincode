@@ -3,7 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
-  "github.com/satori/go.uuid"
+       //  "github.com/satori/go.uuid"
+	"github.com/leonelquinteros/gorand"
+
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
@@ -82,11 +84,19 @@ func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string)
 }
 
 func (t *SimpleChaincode) uuidgeneration(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
-u1 := uuid.NewV4()
+/*u1 := uuid.NewV4()
     fmt.Printf("UUIDv4: %s\n", u1)
 
 	key := args[0]
-	stub.PutState(key,[]byte(u1))
+	stub.PutState(key,[]byte(u1))*/
+	
+	 uuid, err := gorand.UUID()
+    if err != nil {
+        panic(err.Error())
+    }
+
+    fmt.Println(uuid)
+
 	return nil, nil
 }
 
