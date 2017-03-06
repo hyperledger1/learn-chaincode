@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-
+  "github.com/satori/go.uuid"
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 )
 
@@ -41,6 +41,8 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 		return t.Init(stub, "init", args)
 	} else if function == "write" {
 		return t.write(stub, args)
+	}else if function == "uuidgeneration"{
+		return t.uuidgeneration(stub,args)
 	}
 	fmt.Println("invoke did not find func: " + function)
 
@@ -76,6 +78,14 @@ func (t *SimpleChaincode) write(stub shim.ChaincodeStubInterface, args []string)
 	if err != nil {
 		return nil, err
 	}
+	return nil, nil
+}
+
+func (t *SimpleChaincode) uuidgeneration(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
+u1 := uuid.NewV4()
+    fmt.Printf("UUIDv4: %s\n", u1)
+
+
 	return nil, nil
 }
 
